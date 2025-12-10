@@ -1,4 +1,3 @@
-````markdown
 # License Service
 
 Minimal licensing service with a Go backend and Next.js frontend.  
