@@ -1,0 +1,37 @@
+# ----- Stage 1: Node dependencies -----
+FROM node:18-alpine AS frontend-deps
+WORKDIR /app
+COPY frontend/package*.json ./
+RUN npm install
+
+# ----- Stage 2: Next.js Dev environment -----
+FROM node:18-alpine AS frontend-dev
+WORKDIR /app
+COPY --from=frontend-deps /app/node_modules ./node_modules
+COPY frontend/ .
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+EXPOSE 3000
+CMD ["npm", "run", "dev"]
+
+# ----- Stage 3: Go backend -----
+FROM golang:1.23-alpine AS backend-builder
+WORKDIR /goapp
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download
+COPY backend/ .
+RUN go build -o server ./cmd/main.go
+
+# ----- Stage 4: Go runtime -----
+FROM alpine:3 AS backend-run
+WORKDIR /app
+
+# бинарник
+COPY --from=backend-builder /goapp/server ./server
+
+# rsa-ключи
+COPY backend/rsa_private.pem ./rsa_private.pem
+COPY backend/rsa_public.pem ./rsa_public.pem
+
+EXPOSE 8080
+CMD ["./server"]

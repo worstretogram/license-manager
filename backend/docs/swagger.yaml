@@ -1,0 +1,314 @@
+basePath: /
+definitions:
+  auth.LoginRequest:
+    properties:
+      password:
+        example: "123456"
+        type: string
+      username:
+        example: admin
+        type: string
+    type: object
+  auth.LoginResponse:
+    properties:
+      token:
+        example: eyJhbGciOi...
+        type: string
+    type: object
+  license.GenerateRequest:
+    properties:
+      access_level:
+        properties:
+          max_messages:
+            example: 10000
+            type: integer
+          max_users:
+            example: 100
+            type: integer
+        type: object
+      expiration_date:
+        example: "2025-12-31T23:59:59Z"
+        type: string
+      owner:
+        example: Acme Inc
+        type: string
+    type: object
+  license.LicenseData:
+    properties:
+      expires_at:
+        type: string
+      issued_at:
+        type: string
+      license_id:
+        type: string
+      max_messages:
+        type: integer
+      max_users:
+        type: integer
+      owner:
+        type: string
+      signature:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: API для управления лицензиями
+  title: License Service API
+  version: "1.0"
+paths:
+  /admin/licenses:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/license.LicenseData'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получить список всех лицензий
+      tags:
+      - license
+  /admin/licenses/{id}:
+    delete:
+      parameters:
+      - description: UUID лицензии
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Удалить лицензию
+      tags:
+      - license
+    get:
+      parameters:
+      - description: UUID лицензии
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/license.LicenseData'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получить лицензию по ID
+      tags:
+      - license
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: UUID лицензии
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Обновленные данные
+        in: body
+        name: license
+        required: true
+        schema:
+          $ref: '#/definitions/license.LicenseData'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Обновить лицензию
+      tags:
+      - license
+  /admin/licenses/{id}/download:
+    get:
+      description: Скачивает лицензию в формате .lic (base64 encoded JSON)
+      parameters:
+      - description: UUID лицензии
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Скачать лицензию
+      tags:
+      - license
+  /api/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Авторизация пользователя и получение JWT
+      parameters:
+      - description: Учетные данные
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Авторизация
+      tags:
+      - auth
+  /api/license/generate:
+    post:
+      consumes:
+      - application/json
+      description: Генерирует лицензию, подписывает её приватным RSA-ключом и сохраняет
+        в БД. Лицензия возвращается в закодированном виде.
+      parameters:
+      - description: Данные для генерации лицензии
+        in: body
+        name: license
+        required: true
+        schema:
+          $ref: '#/definitions/license.GenerateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Генерация новой лицензии
+      tags:
+      - license
+  /api/license/verify:
+    post:
+      consumes:
+      - application/json
+      description: Проверяет целостность лицензии с помощью публичного ключа и возвращает
+        статус
+      parameters:
+      - description: 'Base64 лицензия: {\'
+        in: body
+        name: license
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Проверка лицензии
+      tags:
+      - license
+swagger: "2.0"
